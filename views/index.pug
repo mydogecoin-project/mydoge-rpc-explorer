@@ -1,35 +1,9 @@
 extends layout
 
 block headContent
-	title Bitcoin Explorer
+	title Mydogecoin Explorer
 	
 block content
-
-
-	- var tzDiff = -parseFloat(browserTzOffset);
-	if (userTzOffset != "unset")
-		- tzDiff = parseFloat(userTzOffset);
-
-	- var tzMoment = moment.utc(new Date()).add(tzDiff, "hours");
-	- var tzDay = tzMoment.format("MM-DD");
-
-	if (global.btcHolidays.byDay[tzDay])
-		
-		- var day = tzDay;
-		- var dom = parseInt(day.substring(3));
-		- var months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-		- var currentMonth = parseInt(day.substring(0, 2)) - 1;
-
-		.mb-2
-			+contentSection
-				h5
-					i.bi-star-fill.text-warning
-					span.ms-2.fw-light.text-muted Today is...
-				each item in global.btcHolidays.byDay[tzDay]
-					h6.fs-5.text-uppercase.fw-light.text-card-highlight.mt-3 #{item.name}!
-						span.ms-2 (#{months[currentMonth]} #{dom})
-				
-					.mb-0 !{item.desc}
 
 	if (getblockchaininfo == null)
 		div.alert.alert-danger
@@ -46,29 +20,11 @@ block content
 	else
 
 		+dismissableAlert("homepageWelcomeBannerDismissed")
-			h5 Bitcoin Explorer
-				span.fw-light :
-					span.fst-italic.ms-1 The free, open-source, easy-to-setup, easy-to-use, self-hosted explorer
-			
-
-			span.fw-light Protect your privacy while enjoying the conveniences of public explorers. Made for Bitcoiners by Bitcoiners. Enjoy!
-
-			hr
-
-			.mt-2
-				if (global.sourcecodeProjectMetadata)
-					a.btn.btn-sm.btn-primary.mb-2.mb-md-1.me-3(href="https://github.com/janoside/btc-rpc-explorer", title="View source code", data-bs-toggle="tooltip", data-bs-placement="bottom")
-						i.bi-git.fs-6.text-white.me-2
-						| View Source
-
-				a.btn.btn-sm.btn-primary.mb-2.mb-md-1.me-3(href="https://donate.bitcoinexplorer.org", target="_blank", title="Support this project with a donation", data-bs-toggle="tooltip", data-bs-placement="bottom")
-					i.bi-heart-fill.fs-6.text-danger.me-2
-					| Donate
-					
-				a.btn.btn-sm.btn-primary.mb-2.mb-md-1.me-3(href="https://twitter.com/BitcoinExplorer", target="_blank", title="Follow @BitcoinExplorer on Twitter", data-bs-toggle="tooltip", data-bs-placement="bottom")
-					i.bi-twitter.fs-6.text-twitter.me-2
-					| @BitcoinExplorer
-
+			.clearfix
+				.float-start
+					//h4.fw-light.mb-2 Welcome to Mydogecoin Explorer!
+					h6.fw-light.mb-2 Mydogecoin (MYDOGE) community
+					h6.fw-light.mb-2 <a href="https://x.com/mydogecoin_fun">Twitter(X)</a> | <a href="https://t.me/mydogecoin_fun">Telegram</a> | <a href="https://discord.gg/JQFCTDyw3G">Discord</a>
 		
 		if (global.activeBlockchain == "main")
 			if (getblockchaininfo.softforks && getblockchaininfo.softforks.taproot && getblockchaininfo.softforks.taproot.bip9)
@@ -78,13 +34,13 @@ block content
 
 				if (blocksLeft > 0)
 					+blockCountdown("Taproot Activation", blocksLeft)
-						.mb-2 The softfork known as Taproot will activate on Bitcoin's mainnet at block height 709,632. After activation, any Bitcoin user will be able to use a new address type that enables new features and functionality. The Taproot upgrade has been ~4 years in the making!
+						.mb-2 The softfork known as Taproot will activate on Mydogecoin's mainnet at block height 709,632. After activation, any Mydogecoin user will be able to use a new address type that enables new features and functionality. The Taproot upgrade has been ~4 years in the making!
 						| Read more about Taproot's history from Pieter Wuille (one of its architects) <a href="https://twitter.com/pwuille/status/1403725170993336322">here</a>.
 
 				else if (blocksLeft <= 0 && blocksLeft > -144)
 					.alert.alert-success
 						h5 Taproot: Activation Height Reached 🎉
-						| Taproot has activated on Bitcoin's mainnet as of block height <a href="./block-height/709632">709,632</a>!
+						| Taproot has activated on Mydogecoin's mainnet as of block height <a href="./block-height/709632">709,632</a>!
 				
 
 		if (getblockchaininfo.initialblockdownload && !["regtest", "signet"].includes(global.activeBlockchain))
@@ -121,7 +77,7 @@ block content
 				include includes/blocks-list.pug
 							
 
-		+contentSection("Tools")
+		//+contentSection("Tools")
 			include includes/tools-card.pug
 				
 

@@ -156,8 +156,9 @@ block content
 										| ?
 
 								else
-									- var feePaid = mempoolDetails ? new Decimal(mempoolDetails.entry.fees.base) : new Decimal(totalInputValue).minus(totalOutputValue);
-									
+									//- var feePaid = mempoolDetails ? new Decimal(mempoolDetails.entry.fees.base) : new Decimal(totalInputValue).minus(totalOutputValue);
+									- var feePaid = (mempoolDetails && mempoolDetails.entry && mempoolDetails.entry.fees && mempoolDetails.entry.fees.base) ? new Decimal(mempoolDetails.entry.fees.base) : new Decimal(totalInputValue).minus(totalOutputValue);
+
 									span #{utils.addThousandsSeparators(new DecimalRounded(feePaid).dividedBy(tx.vsize).times(100000000))}
 
 							+summaryItem("Total Fee")
@@ -167,7 +168,8 @@ block content
 										| ?
 
 								else
-									- var feePaid = mempoolDetails ? new Decimal(mempoolDetails.entry.fees.base) : new Decimal(totalInputValue).minus(totalOutputValue);
+									//- var feePaid = mempoolDetails ? new Decimal(mempoolDetails.entry.fees.base) : new Decimal(totalInputValue).minus(totalOutputValue);
+									- var feePaid = (mempoolDetails && mempoolDetails.entry && mempoolDetails.entry.fees && mempoolDetails.entry.fees.base) ? new Decimal(mempoolDetails.entry.fees.base) : new Decimal(totalInputValue).minus(totalOutputValue);
 									+valueDisplay(feePaid)
 										
 

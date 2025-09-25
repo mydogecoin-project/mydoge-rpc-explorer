@@ -163,6 +163,15 @@ processStatsInterval.unref();
 const systemMonitor = require("./app/systemMonitor.js");
 
 const normalizeActions = require("./app/normalizeActions.js");
+
+expressApp.use((req, res, next) => {
+    const ua = req.headers['user-agent'] || "";
+    if (ua.includes("GPTBot")) {
+        return res.status(403).send("Bot access blocked");
+    }
+    next();
+});
+
 expressApp.use(require("./app/actionPerformanceMonitor.js")(statTracker, {
 	ignoredEndsWithActions: /\.js|\.css|\.svg|\.png|\.woff2/,
 	ignoredStartsWithActions: `${config.baseUrl}snippet`,
@@ -219,9 +228,9 @@ const sessionConfig = {
 	}
 };
 
-if (config.secureSite) {
-	expressApp.set('trust proxy', 1);
-}
+
+expressApp.set('trust proxy', 1);
+
 
 // Helpful reference for production: nginx HTTPS proxy:
 // https://gist.github.com/nikmartin/5902176
@@ -513,7 +522,7 @@ async function onRpcConnectionVerified(getnetworkinfo, getblockchaininfo) {
 		global.pruneHeight = getblockchaininfo.pruneheight;
 	}
 
-	var bitcoinCoreVersionRegex = /^.*\/Satoshi\:(.*)\/.*$/;
+	var bitcoinCoreVersionRegex = /^.*\/MydogecoinCore\:(.*)\/.*$/;
 
 	var match = bitcoinCoreVersionRegex.exec(getnetworkinfo.subversion);
 	if (match) {

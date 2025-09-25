@@ -72,14 +72,19 @@ function getMiningInfo() {
 }
 
 function getIndexInfo() {
+	// Respect coin config: if coin explicitly disables getIndexInfo, treat as unsupported
+	if (coinConfig.features && coinConfig.features.getIndexInfo === false) {
+		return unsupportedPromise(minRpcVersions.getindexinfo);
+	}
+
 	if (semver.gte(global.btcNodeSemver, minRpcVersions.getindexinfo)) {
 		return getRpcData("getindexinfo");
-
 	} else {
-		// unsupported
+		// unsupported by node version
 		return unsupportedPromise(minRpcVersions.getindexinfo);
 	}
 }
+
 
 function getDeploymentInfo() {
 	if (semver.gte(global.btcNodeSemver, minRpcVersions.getdeploymentinfo)) {
@@ -107,8 +112,15 @@ function getAllMempoolTxids() {
 	return getRpcDataWithParams({method:"getrawmempool", parameters:[false]});
 }
 
-function getSmartFeeEstimate(mode="CONSERVATIVE", confTargetBlockCount) {
-	return getRpcDataWithParams({method:"estimatesmartfee", parameters:[confTargetBlockCount, mode]});
+function getSmartFeeEstimate(confTargetBlockCount) {
+	// Dogecoin Core expects numeric confirmation target, not "ECONOMICAL"/"CONSERVATIVE"
+	if (typeof confTargetBlockCount !== "number") {
+		confTargetBlockCount = 6; // default 6-block target
+	}
+	return getRpcDataWithParams({
+		method: "estimatesmartfee",
+		parameters: [confTargetBlockCount],
+	});
 }
 
 function getNetworkHashrate(blockCount=144) {
@@ -116,12 +128,16 @@ function getNetworkHashrate(blockCount=144) {
 }
 
 function getBlockStats(hash) {
+	// Respect coin config: if coin explicitly disables getBlockStats, treat as unsupported
+	if (coinConfig.features && coinConfig.features.getBlockStats === false) {
+		return unsupportedPromise(minRpcVersions.getblockstats);
+	}
+
 	if (semver.gte(global.btcNodeSemver, minRpcVersions.getblockstats)) {
 		if (hash == coinConfig.genesisBlockHashesByNetwork[global.activeBlockchain] && coinConfig.genesisBlockStatsByNetwork[global.activeBlockchain]) {
 			return new Promise(function(resolve, reject) {
 				resolve(coinConfig.genesisBlockStatsByNetwork[global.activeBlockchain]);
 			});
-
 		} else {
 			return getRpcDataWithParams({method:"getblockstats", parameters:[hash]});
 		}
@@ -131,21 +147,53 @@ function getBlockStats(hash) {
 	}
 }
 
-function getBlockStatsByHeight(height) {
-	if (semver.gte(global.btcNodeSemver, minRpcVersions.getblockstats)) {
-		if (height == 0 && coinConfig.genesisBlockStatsByNetwork[global.activeBlockchain]) {
-			return new Promise(function(resolve, reject) {
-				resolve(coinConfig.genesisBlockStatsByNetwork[global.activeBlockchain]);
-			});
-			
-		} else {
-			return getRpcDataWithParams({method:"getblockstats", parameters:[height]});
-		}
-	} else {
-		// unsupported
-		return unsupportedPromise(minRpcVersions.getblockstats);
-	}
+
+async function getBlockStatsByHeight(height) {
+    if (coinConfig.features && coinConfig.features.getBlockStats === false) {
+        return unsupportedPromise(minRpcVersions.getblockstats);
+    }
+
+    if (!semver.gte(global.btcNodeSemver, minRpcVersions.getblockstats)) {
+        return unsupportedPromise(minRpcVersions.getblockstats);
+    }
+
+    // Genesis block fallback
+    if (height === 0 && coinConfig.genesisBlockStatsByNetwork[global.activeBlockchain]) {
+        return coinConfig.genesisBlockStatsByNetwork[global.activeBlockchain];
+    }
+
+    try {
+        let stats = await getRpcDataWithParams({ method: "getblockstats", parameters: [height] });
+
+        // Ensure numeric fields
+        stats.total_out = stats.total_out || 0;
+        stats.subsidy = stats.subsidy || 0;
+        stats.totalfee = stats.totalfee || 0;
+
+        // Compute Volume (total_out + subsidy + totalfee)
+        stats.volume = stats.total_out + stats.subsidy + stats.totalfee;
+
+        // Provide fee rates (optional)
+        stats.minFeeRate = stats.minfeerate || 0;
+        stats.avgFeeRate = stats.avgfeerate || 0;
+        stats.maxFeeRate = stats.maxfeerate || 0;
+
+        return stats;
+
+    } catch (err) {
+        debugLog("getBlockStatsByHeight failed for height " + height, err);
+        return {
+            total_out: 0,
+            subsidy: 0,
+            totalfee: 0,
+            volume: 0,
+            minFeeRate: 0,
+            avgFeeRate: 0,
+            maxFeeRate: 0
+        };
+    }
 }
+
 
 function getUtxoSetSummary(useCoinStatsIndexIfAvailable=true) {
 	if (useCoinStatsIndexIfAvailable && global.getindexinfo && global.getindexinfo.coinstatsindex) {
@@ -189,17 +237,28 @@ function getRawMempool() {
 }
 
 function getRawMempoolEntry(txid) {
-	return new Promise(function(resolve, reject) {
-		getRpcDataWithParams({method:"getmempoolentry", parameters:[txid]}).then(function(result) {
-			result.txid = txid;
+    return new Promise(async function(resolve) {
+        if (!txid || !isValidTxid(txid)) {
+            return resolve(null); // invalid txid, skip gracefully
+        }
 
-			resolve(result);
+        try {
+            const result = await getRpcDataWithParams({ method: "getmempoolentry", parameters: [txid] });
 
-		}).catch(function(err) {
-			resolve(null);
-		});
-	});
+            if (!result || result.code < 0) {
+                return resolve(null); // skip failed entry
+            }
+
+            result.txid = txid;
+            resolve(result);
+
+        } catch (err) {
+            // Graceful fallback: return null instead of throwing
+            resolve(null);
+        }
+    });
 }
+
 
 function getChainTxStats(blockCount, blockhashEnd=null) {
 	let params = [blockCount];
@@ -211,19 +270,27 @@ function getChainTxStats(blockCount, blockhashEnd=null) {
 }
 
 function getBlockByHeight(blockHeight) {
-	return new Promise(function(resolve, reject) {
-		getRpcDataWithParams({method:"getblockhash", parameters:[blockHeight]}).then(function(blockhash) {
-			getBlockByHash(blockhash).then(function(block) {
-				resolve(block);
+    return new Promise(async function(resolve, reject) {
+        if (typeof blockHeight !== "number" || blockHeight < 0) {
+            return reject(new Error(`Invalid blockHeight: ${blockHeight}`));
+        }
 
-			}).catch(function(err) {
-				reject(err);
-			});
-		}).catch(function(err) {
-			reject(err);
-		});
-	});
+        try {
+            const blockhash = await getRpcDataWithParams({ method: "getblockhash", parameters: [blockHeight] });
+            
+            if (!blockhash || typeof blockhash !== "string") {
+                return reject(new Error(`Failed to fetch blockhash for height: ${blockHeight}`));
+            }
+
+            const block = await getBlockByHash(blockhash);
+            resolve(block);
+
+        } catch (err) {
+            reject(err);
+        }
+    });
 }
+
 
 function getBlockHeaderByHash(blockhash) {
 	return getRpcDataWithParams({method:"getblockheader", parameters:[blockhash]});
@@ -248,68 +315,124 @@ function getBlockHashByHeight(blockHeight) {
 	return getRpcDataWithParams({method:"getblockhash", parameters:[blockHeight]});
 }
 
-function getBlockByHash(blockHash) {
-	return getRpcDataWithParams({method:"getblock", parameters:[blockHash]})
-		.then(function(block) {
-			return getRawTransaction(block.tx[0], blockHash).then(function(tx) {
-				block.coinbaseTx = tx;
-				block.totalFees = utils.getBlockTotalFeesFromCoinbaseTxAndBlockHeight(tx, block.height);
-				block.miner = utils.identifyMiner(tx, block.height);
-				return block;
-			})
-		}).catch(function(err) {
-				// the block is pruned, use `getblockheader` instead
-				debugLog('getblock failed, falling back to getblockheader', blockHash, err);
-				return getRpcDataWithParams({method:"getblockheader", parameters:[blockHash]})
-					.then(function(block) { block.tx = []; return block });
-		}).then(function(block) {
-				block.subsidy = coinConfig.blockRewardFunction(block.height, global.activeBlockchain);
-				return block;
-		})
+async function getRawTransaction(txid, blockhash) {
+    if (!txid || typeof txid !== "string") {
+        throw new Error(`Invalid txid: ${txid}`);
+    }
+
+    // Handle genesis coinbase transaction
+    if (coins[config.coin].genesisCoinbaseTransactionIdsByNetwork[global.activeBlockchain] &&
+        txid === coins[config.coin].genesisCoinbaseTransactionIdsByNetwork[global.activeBlockchain]) {
+
+        try {
+            const blockchainInfo = await getBlockchainInfo();
+            let result = coins[config.coin].genesisCoinbaseTransactionsByNetwork[global.activeBlockchain];
+            result.confirmations = blockchainInfo.blocks;
+
+            if (global.activeBlockchain === "regtest" && result.confirmations === 0) {
+                result.confirmations = 1;
+            }
+
+            return result;
+
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    // Normal RPC lookup with safe fallback
+    try {
+        const result = await getRpcDataWithParams({ method: "getrawtransaction", parameters: [txid, true] });
+        return result || null; // return null if tx not found
+    } catch (err) {
+        // If txindex not available, attempt wallet/recent block search
+        if (!global.txindexAvailable) {
+            try {
+                const fallbackTx = await noTxIndexTransactionLookup(txid, !!blockhash);
+                return fallbackTx || null; // return null if not found
+            } catch (_) {
+                return null; // fail silently for missing tx
+            }
+        }
+        // If txindex is enabled but tx is missing, just return null
+        return null;
+    }
 }
+
+async function getBlockByHash(blockHash) {
+    if (!blockHash || typeof blockHash !== "string" || blockHash.length !== 64) {
+        throw new Error(`Invalid block hash: ${blockHash}`);
+    }
+
+    let block;
+    try {
+        block = await getRpcDataWithParams({ method: "getblock", parameters: [blockHash, true] });
+    } catch (err) {
+        if (err.error && err.error.code === -5) {
+            // Block not found
+            return null; 
+        }
+        throw err;
+    }
+
+    // Fetch full transaction objects
+    if (block.tx && block.tx.length > 0) {
+        const txPromises = block.tx.map(txid => getRawTransaction(txid, blockHash));
+        block.transactions = (await Promise.all(txPromises)).filter(tx => tx != null); // remove nulls
+    } else {
+        block.transactions = [];
+    }
+
+    // Track missing transactions
+    block.missingTxs = block.tx.length - block.transactions.length;
+
+    // Original processing
+    block.coinbaseTx = block.transactions[0] || null;
+    block.totalFees = utils.getBlockTotalFeesFromCoinbaseTxAndBlockHeight(block.coinbaseTx, block.height);
+    block.miner = utils.identifyMiner(block.coinbaseTx, block.height);
+    block.subsidy = coinConfig.blockRewardFunction(block.height, global.activeBlockchain);
+
+    // Compute stats safely
+    let totalOut = 0, totalIn = 0;
+    block.transactions.forEach(tx => {
+        if (!tx) return; // skip null transactions
+        totalIn += tx.vin?.length || 0;
+        totalOut += tx.vout?.reduce((sum, v) => sum + (v.value || 0), 0);
+    });
+
+    block.blockstats = block.blockstats || {};
+    block.blockstats.ins = totalIn;
+    block.blockstats.outs = totalOut;
+
+    block.volume = totalOut + (block.totalFees || 0) + (block.subsidy || 0);
+
+    block.minFeeRate = block.blockstats.minfeerate || 0;
+    block.avgFeeRate = block.blockstats.avgfeerate || 0;
+    block.maxFeeRate = block.blockstats.maxfeerate || 0;
+
+    // Ensure nTx is available
+    if (Array.isArray(block.transactions)) {
+        block.nTx = block.transactions.length || 1;
+    } else if (Array.isArray(block.tx)) {
+        block.nTx = block.tx.length || 1;
+    } else {
+        block.nTx = 1;
+    }
+
+    return block;
+}
+
+
 
 function getAddress(address) {
 	return getRpcDataWithParams({method:"validateaddress", parameters:[address]});
 }
 
-function getRawTransaction(txid, blockhash) {
-	return new Promise(function(resolve, reject) {
-		if (coins[config.coin].genesisCoinbaseTransactionIdsByNetwork[global.activeBlockchain] && txid == coins[config.coin].genesisCoinbaseTransactionIdsByNetwork[global.activeBlockchain]) {
-			// copy the "confirmations" field from genesis block to the genesis-coinbase tx
-			getBlockchainInfo().then(function(blockchainInfoResult) {
-				let result = coins[config.coin].genesisCoinbaseTransactionsByNetwork[global.activeBlockchain];
-				result.confirmations = blockchainInfoResult.blocks;
-
-				// hack: default regtest node returns "0" for number of blocks, despite including a genesis block;
-				// to display this block without errors, tag it with 1 confirmation
-				if (global.activeBlockchain == "regtest" && result.confirmations == 0) {
-					result.confirmations = 1;
-				}
-
-				resolve(result);
-
-			}).catch(function(err) {
-				reject(err);
-			});
-
-		} else {
-			let extra_params = blockhash ? [ blockhash ] : [];
-			getRpcDataWithParams({method:"getrawtransaction", parameters:[txid, 1, ...extra_params]}).then(function(result) {
-				if (result == null || result.code && result.code < 0) {
-					return Promise.reject(result);
-				}
-
-				resolve(result);
-
-			}).catch(function(err) {
-				if (!global.txindexAvailable) {
-					noTxIndexTransactionLookup(txid, !!blockhash).then(resolve, reject);
-				} else {
-					reject(err);
-				}
-			});
-		}
-	});
+function getAddressBalance(address) {
+  return getRpcDataWithParams({
+    method: "getaddressbalance",
+    parameters: [address]
+  });
 }
 
 async function noTxIndexTransactionLookup(txid, walletOnly) {
@@ -346,8 +469,14 @@ async function noTxIndexTransactionLookup(txid, walletOnly) {
 }
 
 function listWallets() {
-	return getRpcDataWithParams({method:"listwallets", parameters:[]})
+	if (coinConfig && coinConfig.name === "mydogecoin") {
+		// Dogecoin Core has no listwallets RPC, so just return an empty array
+		return Promise.resolve([]);
+	}
+
+	return getRpcDataWithParams({method:"listwallets", parameters:[]});
 }
+
 
 async function getWalletTransaction(wallet, txid) {
 	global.rpcClient.wallet = wallet;
@@ -603,8 +732,100 @@ function logStats(cmd, hasParams, dt, success) {
 	}
 }
 
+async function getBlock(hash) {
+    // 'getblock' RPC call, verbose = true
+    return await getRpcDataWithParams({ method: "getblock", parameters: [hash, true] });
+}
+
+//--Add new------
+function getTotalTxVolume(txs) {
+    let totalVolume = new Decimal(0);
+
+    for (const tx of txs) {
+        for (const vout of tx.vout) {
+            totalVolume = totalVolume.plus(new Decimal(vout.value));
+        }
+    }
+
+    return totalVolume;
+}
+
+function getBlockVolume(block) {
+    let txVolume = getTotalTxVolume(block.tx || []);
+    let fees = getBlockTotalFeesFromCoinbaseTxAndBlockHeight(block.coinbaseTx, block.height);
+
+    return txVolume.minus(new Decimal(fees));
+}
+
+function getCirculatingSupply(height) {
+    return estimatedSupply(height);
+}
+
+function formatVolume(volume, coinUnit = coinConfig.baseCurrencyUnit.name) {
+    return `${formatCurrencyAmount(volume, coinUnit).val} ${coinUnit}`;
+}
+
+// utils/block.js or wherever you define helpers
+function getBlockTotalVolume(block) {
+    let totalVolume = 0;
+
+    if (!block) return totalVolume;
+
+    // Include mining reward (coinbase)
+    if (block.miningReward) {
+        totalVolume += parseFloat(block.miningReward);
+    }
+
+    // Include all transaction outputs
+    if (block.tx) {
+        block.tx.forEach(tx => {
+            if (tx.vout) {
+                tx.vout.forEach(vout => {
+                    if (vout.value) {
+                        totalVolume += parseFloat(vout.value);
+                    }
+                });
+            }
+        });
+    }
+
+    return totalVolume;
+}
+
+// Optionally, calculate total fees per block
+function getBlockTotalFees(block) {
+    let totalFees = 0;
+
+    if (!block || !block.tx) return totalFees;
+
+    block.tx.forEach(tx => {
+        if (tx.fee) {
+            totalFees += parseFloat(tx.fee);
+        }
+    });
+
+    return totalFees;
+}
+
+function isValidTxid(txid) {
+    return typeof txid === "string" && /^[a-fA-F0-9]{64}$/.test(txid);
+}
+
+function isValidBlockHash(hash) {
+    return typeof hash === "string" && /^[a-fA-F0-9]{64}$/.test(hash);
+}
 
 module.exports = {
+	isValidBlockHash:isValidBlockHash,
+	isValidTxid:isValidTxid,
+	getBlockTotalFees:getBlockTotalFees,
+	getBlockTotalVolume:getBlockTotalVolume,
+	formatVolume:formatVolume,
+	getCirculatingSupply:getCirculatingSupply,
+	getBlockVolume:getBlockVolume,
+	getTotalTxVolume:getTotalTxVolume,
+	getBlock:getBlock,
+	getAddressBalance: getAddressBalance,
 	getRpcData: getRpcData,
 	getRpcDataWithParams: getRpcDataWithParams,
 

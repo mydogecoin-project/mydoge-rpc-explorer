@@ -7,6 +7,10 @@ block content
 	.clearfix
 		.float-start
 			+pageTitle("Blocks")
+			if chainBalance
+				p.mt-2 Current Chain Balance: #{chainBalance} #{coinConfig.ticker}
+
+		
 		.float-end
 			if (blocks)
 				nav(aria-label="Page navigation")

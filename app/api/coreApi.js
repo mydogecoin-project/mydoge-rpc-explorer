@@ -243,9 +243,19 @@ function getMempoolInfo() {
 	return tryCacheThenRpcApi(miscCache, "getMempoolInfo", 5 * ONE_SEC, rpcApi.getMempoolInfo);
 }
 
+/*function getIndexInfo() {
+	return tryCacheThenRpcApi(miscCache, "getIndexInfo", 10 * ONE_SEC, rpcApi.getIndexInfo);
+}*/
 function getIndexInfo() {
+	// Skip if Mydogecoin (no getindexinfo support)
+	if (global.coinConfig && global.coinConfig.name === "mydogecoin") {
+		return Promise.resolve({ error: "unsupported" });
+	}
+
+	// Default path
 	return tryCacheThenRpcApi(miscCache, "getIndexInfo", 10 * ONE_SEC, rpcApi.getIndexInfo);
 }
+
 
 function getAllMempoolTxids() {
 	// no caching, that would be dumb
@@ -272,11 +282,31 @@ function getNetworkHashrate(blockCount) {
 	});
 }
 
+/*function getBlockStats(hash) {
+	return tryCacheThenRpcApi(miscCache, "getBlockStats-" + hash, FIFTEEN_MIN, function() {
+		return rpcApi.getBlockStats(hash);
+	});
+}*/
+
 function getBlockStats(hash) {
+	// Skip if Mydogecoin (no getblockstats support)
+	if (global.coinConfig && global.coinConfig.name === "mydogecoin") {
+		// fallback using getblock
+		return rpcApi.getBlockByHash(hash).then(block => {
+			return {
+				txs: block.tx ? block.tx.length : 0,
+				size: block.size,
+				height: block.height
+			};
+		});
+	}
+
+	// Default path (Bitcoin, etc.)
 	return tryCacheThenRpcApi(miscCache, "getBlockStats-" + hash, FIFTEEN_MIN, function() {
 		return rpcApi.getBlockStats(hash);
 	});
 }
+
 
 function getBlockStatsByHeight(height) {
 	return tryCacheThenRpcApi(miscCache, "getBlockStatsByHeight-" + height, FIFTEEN_MIN, function() {
@@ -2231,6 +2261,19 @@ function logCacheSizes() {
 	stream.write("itemCounts: " + JSON.stringify(itemCounts) + "\n");
 	stream.end();
 }
+
+if (typeof module.exports.getUtxoSummary !== "function" 
+    && typeof module.exports.getUtxoSetSummary === "function") {
+
+  module.exports.getUtxoSummary = async function () {
+    try {
+      return await module.exports.getUtxoSetSummary(true);
+    } catch (err) {
+      throw new Error("Error in getUtxoSummary: " + err.message);
+    }
+  };
+}
+
 
 module.exports = {
 	getGenesisBlockHash: getGenesisBlockHash,

@@ -13,22 +13,24 @@
 				th.text-end.text-card-highlight.fw-normal.text-uppercase Age
 				
 				th.text-end.text-card-highlight.fw-normal.text-uppercase.d-none.d-sm-table-cell
-					span.border-dotted(title="<b>Time To Mine</b><br/>The time it took to mine this block after the previous block. <span class='text-success'>Fast</span> blocks (< 5min) and <span class='text-danger'>Slow</span> blocks (> 15min) are highlighted.", data-bs-toggle="tooltip", data-bs-html="true") TTM
+					span.border-dotted(
+						title="<b>Time To Mine</b><br/>The time it took to mine this block after the previous block. <span class='text-success'>Fast</span> blocks (< 5min) and <span class='text-danger'>Slow</span> blocks (> 15min) are highlighted.", 
+						data-bs-toggle="tooltip", 
+						data-bs-html="true"
+					) TTM
+
 				th.text-start.text-card-highlight.fw-normal.text-uppercase Miner
+
 				th.text-end.text-card-highlight.fw-normal.text-uppercase
 					span.border-dotted(title="The number of transactions included in each block.", data-bs-toggle="tooltip") N(tx)
 
-				if (blockstatsByHeight)
-					th.text-end.text-card-highlight.fw-normal.text-uppercase.d-none.d-lg-table-cell
-						span.border-dotted(title="The total output of all transactions in each block.", data-bs-toggle="tooltip") Volume
-
-				if (blockstatsByHeight)
-					th.text-end.text-card-highlight.fw-normal.text-uppercase.d-none.d-md-table-cell
-						span.border-dotted(title="The min/avg/max fee rates (sat/vB) for transactions in this block.", data-bs-toggle="tooltip") Fee Rates
-				else
-					th.text-end.text-card-highlight.fw-normal.text-uppercase
-						span.border-dotted(title="The average fee (sat/vB) for all block transactions.", data-bs-toggle="tooltip") Avg Fee
-
+				// VOLUME
+				//th.text-end.text-card-highlight.fw-normal.text-uppercase.d-none.d-lg-table-cell
+					span.border-dotted(title="The total output of all transactions in this block (Volume).", data-bs-toggle="tooltip") Volume
+				
+				// Fee Rates
+				//th.text-end.text-card-highlight.fw-normal.text-uppercase.d-none.d-md-table-cell
+					span.border-dotted(title="The min/avg/max fee rates (sat/vB) for transactions in this block.", data-bs-toggle="tooltip") Fee Rates
 
 				th.text-end.text-card-highlight.fw-normal.text-uppercase.d-none.d-lg-table-cell Σ Fees
 				
@@ -36,12 +38,11 @@
 
 				if (blocks && blocks.length > 0 && blocks[0].weight)
 					th.text-end.text-card-highlight.fw-normal.text-uppercase.d-none.d-lg-table-cell % Full
-
 				else
 					th.text-end.text-card-highlight.fw-normal.text-uppercase.d-none.d-lg-table-cell Size
 						small  (kB)
-		tbody
 
+		tbody
 			each block, blockIndex in blocks
 
 				if (global.prunedBlockchain && global.pruneHeight == (block.height + 1))
@@ -53,9 +54,8 @@
 								i pruned
 								| , meaning that some or all data that is non-essential for blockchain verification has been deleted.
 
-
 				if (block && ((sort == "desc" && (blockIndex < blocks.length - 1 || block.height == 0)) || (sort == "asc" && (block.height == 0 || blockIndex > 0))))
-					tr
+					tr(data-height=block.height)
 						td.text-end
 							if (global.specialBlocks && global.specialBlocks[block.hash])
 								a(data-bs-toggle="tooltip", title=`${coinConfig.name} Fun! There's something special about this block…`)
@@ -63,207 +63,181 @@
 										+funItemIcon
 
 							if (block.height % 2016 == 0)
-								span.me-1(title=`This is the first block of difficulty era #${(block.height / 2016).toLocaleString()}`, data-bs-toggle="tooltip")
+								span.me-1(
+									title=`This is the first block of difficulty era #${(block.height / 2016).toLocaleString()}`, 
+									data-bs-toggle="tooltip"
+								)
 									i.bi-info-circle
 
 							a(href=`./block-height/${block.height}`) #{block.height.toLocaleString()}
 						
+						- var timeAgoTime = moment.utc(new Date()).diff(moment.utc(new Date(parseInt(block.time) * 1000)))
+						- var timeAgo = moment.duration(timeAgoTime)
 
-						- var timeAgoTime = moment.utc(new Date()).diff(moment.utc(new Date(parseInt(block.time) * 1000)));
-						- var timeAgo = moment.duration(timeAgoTime);
-
-						- var timeDiff = null;
+						- var timeDiff = null
 						
 						if (sort == "asc")
 							if (blockIndex > 0)
-								- var timeDiff = moment.duration(moment.utc(new Date(parseInt(block.time) * 1000)).diff(moment.utc(new Date(parseInt(blocks[blockIndex - 1].time) * 1000))));
+								- var timeDiff = moment.duration(moment.utc(new Date(parseInt(block.time) * 1000)).diff(moment.utc(new Date(parseInt(blocks[blockIndex - 1].time) * 1000))))
 						else
 							if (blockIndex < blocks.length - 1)
-								- var timeDiff = moment.duration(moment.utc(new Date(parseInt(block.time) * 1000)).diff(moment.utc(new Date(parseInt(blocks[blockIndex + 1].time) * 1000))));
+								- var timeDiff = moment.duration(moment.utc(new Date(parseInt(block.time) * 1000)).diff(moment.utc(new Date(parseInt(blocks[blockIndex + 1].time) * 1000))))
 
 						//if (!hideTimestampColumn)
 						td.text-end.d-none.d-md-table-cell
 							+timestamp(block.time, {includeAgo:false})
 							
-
 						td.text-end
-
 							if (sort != "asc" && blockIndex == 0 && offset == 0 && timeAgoTime > (15 * 60 * 1000))
-								span.text-danger.border-dotted(title="It's been > 15 min since this latest block.", data-bs-toggle="tooltip")
+								span.text-danger.border-dotted(
+									title="It's been > 15 min since this latest block.", 
+									data-bs-toggle="tooltip"
+								)
 									+timeAgo(block.time, {outputCommas:false, agoText:false})
 							else
 								+timeAgo(block.time, {outputCommas:false, agoText:false})
 
 						td.text-end.d-none.d-sm-table-cell
 							if (timeDiff)
-								- var colorClass = "";
+								- var colorClass = ""
 								if (timeDiff < 300000)
-									- var colorClass = "text-success";
+									- var colorClass = "text-success"
 								if (timeDiff > 900000)
-									- var colorClass = "text-danger";
+									- var colorClass = "text-danger"
 
 								span(class=colorClass)
 									if (timeDiff == 0)
 										span 0:00
 									else
 										span #{timeDiff.format()}
-									
-									if (false)
-										if (timeDiff.asMinutes() < 1)
-											span #{parseInt(timeDiff.asSeconds())}s
-										else
-											span #{parseInt(timeDiff.asMinutes())}m #{parseInt(timeDiff.asSeconds())}s
-
 							else
 								if (block.height == 0)
-									small.border-dotted.text-muted(title="Not applicable: genesis block has no previous block to compare to.", data-bs-toggle="tooltip") N/A (genesis)
+									small.border-dotted.text-muted(
+										title="Not applicable: genesis block has no previous block to compare to.", 
+										data-bs-toggle="tooltip"
+									) N/A (genesis)
 								else
 									span.fw-light.text-muted -
-						
+
 						td.text-start
 							if (block.miner)
 								if (block.miner.type == "address-only")
 									span.badge.bg-secondary
 										.d-inline.d-md-none
-											span(data-bs-toggle="tooltip", title=`Unknown Miner Payout Address: ${block.miner.name}`) #{utils.ellipsizeMiddle(block.miner.name, 10)}
+											span(
+												data-bs-toggle="tooltip", 
+												title=`Unknown Miner Payout Address: ${block.miner.name}`
+											) #{utils.ellipsizeMiddle(block.miner.name, 10)}
 
 										.d-none.d-md-inline
-											span(data-bs-toggle="tooltip", title=`Unknown Miner Payout Address: ${block.miner.name}`) #{utils.ellipsizeMiddle(block.miner.name, 14)}
+											span(
+												data-bs-toggle="tooltip", 
+												title=`Unknown Miner Payout Address: ${block.miner.name}`
+											) #{utils.ellipsizeMiddle(block.miner.name, 14)}
 											+copyTextButton(block.miner.name)
 
 								else
 									.d-inline.d-sm-none
-										span.badge.bg-primary(data-bs-toggle="tooltip", data-bs-html="true", title=`Identified by: ${block.miner.identifiedBy}`) #{utils.ellipsize(block.miner.name, 12)}
-
+										span.badge.bg-primary(
+											data-bs-toggle="tooltip", 
+											data-bs-html="true", 
+											title=`Identified by: ${block.miner.identifiedBy}`
+										) #{utils.ellipsize(block.miner.name, 12)}
 										if (block.miner.note)
 											i.bi-asterisk.ms-2(data-bs-toggle="tooltip", title=block.miner.note)
 
 									.d-none.d-sm-inline
-										span.badge.bg-primary(data-bs-toggle="tooltip", data-bs-html="true", title=`Identified by: ${block.miner.identifiedBy}`) #{utils.ellipsize(block.miner.name, 14)}
-
+										span.badge.bg-primary(
+											data-bs-toggle="tooltip", 
+											data-bs-html="true", 
+											title=`Identified by: ${block.miner.identifiedBy}`
+										) #{utils.ellipsize(block.miner.name, 14)}
 										if (block.miner.note)
 											i.bi-asterisk.ms-2(data-bs-toggle="tooltip", title=block.miner.note)
-
 							else if (block.height < global.pruneHeight)
 								span(title="This data is unavailable due to blockchain pruning", data-bs-toggle="tooltip")
 									i.bi-backspace.text-danger
-										
 							else
 								span.badge.bg-secondary Unknown
+								
+						td.text-end #{block.nTx ? block.nTx.toLocaleString() : 0}
 
-						
-						td.text-end #{block.nTx.toLocaleString()}
-
-						if (blockstatsByHeight)
-							td.text-end.d-none.d-lg-table-cell
-								if (blockstatsByHeight[block.height])
-									- var satValue = new Decimal(blockstatsByHeight[block.height].total_out).plus(blockstatsByHeight[block.height].subsidy).plus(blockstatsByHeight[block.height].totalfee);
-									- var currencyValue = parseInt(satValue.dividedBy(coinConfig.baseCurrencyUnit.multiplier));
-									- var currencyValueDecimals = 0;
-
-									if (userSettings.displayCurrency == "btc")
-										+valueDisplaySpecial(currencyValue, 0)
-
-									else
-										+valueDisplay(currencyValue)
-										
-
-									if (block.totalFees == null)
-										- block.totalFees = Decimal(blockstatsByHeight[block.height].totalfee).dividedBy(coinConfig.baseCurrencyUnit.multiplier)
-
-								else
-									span 0
-
-						td.text-end.d-none.d-md-table-cell
-							if (blockstatsByHeight && blockstatsByHeight[block.height])
-								span.me-1 #{blockstatsByHeight[block.height].minfeerate},
-								span.me-1 #{blockstatsByHeight[block.height].avgfeerate},
-								span #{blockstatsByHeight[block.height].maxfeerate}
-
-							else if (block.totalFees && block.strippedsize)
-								- var currencyValue = new Decimal(block.totalFees).dividedBy(block.strippedsize).times(coinConfig.baseCurrencyUnit.multiplier).toDecimalPlaces(0);
-								if (currencyValue > 0)
-									span #{currencyValue}
-								else
-									span -
-									
+						// VOLUME (fix NA fallback)
+						//td.text-end.d-none.d-lg-table-cell
+							- var currencyValue = null
+							if (blockstatsByHeight && blockstatsByHeight[block.height] && blockstatsByHeight[block.height].totalVolume != null)
+								- currencyValue = new Decimal(blockstatsByHeight[block.height].totalVolume).toDecimalPlaces(4)
+							else if (block.totalVolume != null)
+								- currencyValue = new Decimal(block.totalVolume).toDecimalPlaces(4)
+							if (currencyValue != null)
+								+valueDisplay(currencyValue)
 							else
-								span(title="This data is unavailable due to blockchain pruning", data-bs-toggle="tooltip")
-									i.bi-backspace.text-danger
+								span.text-muted N/A
 
-							// idea: show typical tx fee, maybe also optimized fee if not segwit
-							if (false)
-								- var feeEstimateVal = currencyValue.times(166).dividedBy(coinConfig.baseCurrencyUnit.multiplier);
-								span.border-dotted(title=`Value: ${feeEstimateVal}`, data-bs-toggle="tooltip") #{currencyValue}
+
+						//td.text-end.d-none.d-md-table-cell
+						//	- var feeStats = null
+						//	if (blockstatsByHeight && blockstatsByHeight[block.height])
+						//		- feeStats = blockstatsByHeight[block.height]
+						//	if (feeStats)
+						//		span.me-1 #{feeStats.minfeerate || 0},
+						//		span.me-1 #{feeStats.avgfeerate || 0},
+						//		span #{feeStats.maxfeerate || 0}
+						//	else if (block.totalFees && block.strippedsize)
+						//		- var feeValue = new Decimal(block.totalFees).dividedBy(block.strippedsize).times(coinConfig.baseCurrencyUnit.multiplier).toDecimalPlaces(0)
+						//		if (feeValue > 0)
+						//			span #{feeValue}
+						//		else
+						//			span 0
+						//	else
+						//		span(title="This data is unavailable due to blockchain pruning", data-bs-toggle="tooltip")
+						//			i.bi-backspace.text-danger
 
 						td.text-end.d-none.d-lg-table-cell
 							if (block.totalFees)
-								- var currencyValue = new Decimal(block.totalFees);
-								- var currencyValueDecimals = 3;
-
-								if (userSettings.displayCurrency == "btc")
-									+valueDisplaySpecial(block.totalFees, 4)
-
+								- var currencyValue = new Decimal(block.totalFees || 0)
+								if (userSettings.displayCurrency == "mydoge")
+									+valueDisplaySpecial(currencyValue, 4)
 								else
-									+valueDisplay(block.totalFees)
-
+									+valueDisplay(currencyValue)
 							else
 								span(title="This data is unavailable due to blockchain pruning", data-bs-toggle="tooltip")
 									i.bi-backspace.text-danger
 
-
-							
-						
 						if (false)
 							td.text-end
-								- var bSizeK = parseInt(block.size / 1000);
+								- var bSizeK = parseInt(block.size / 1000)
 								span #{bSizeK.toLocaleString()}
 
 						if (blocks && blocks.length > 0 && blocks[0].weight)
 							td.text-end.d-none.d-lg-table-cell
 								if block.weight
-									if (true)
-										- var full = new Decimal(block.weight).dividedBy(coinConfig.maxBlockWeight).times(100);
-										- var full2 = full.toDP(0);
-
-										
-										if (full >= 99 || full2 == 99)
-											span.text-success 99+
-
-										else
-											span.text-primary #{full2}
-
+									- var full = new Decimal(block.weight || 0).dividedBy(coinConfig.maxBlockWeight).times(100)
+									- var full2 = full.toDP(0)
+									if (full >= 99 || full2 == 99)
+										span.text-success 99+
 									else
-										- var bWeightK = parseInt(block.weight / 1000);
-										- var fullPercent = new Decimal(100 * block.weight / coinConfig.maxBlockWeight).toDecimalPlaces(1);
-
-										span #{bWeightK.toLocaleString()} 
-										small.fw-light.text-muted (#{fullPercent}%)
-
-										- var bSizeK = parseInt(block.size / 1000);
-										span.ms-1(data-bs-toggle="tooltip", title=`Size: ${bSizeK.toLocaleString()} kB`)
-											i.bi-three-dots.text-muted
-
-										div.progress(style="height: 4px;")
-											div.progress-bar(role="progressbar", style=`width: ${fullPercent}%;`, aria-valuenow=parseInt(100 * block.weight / coinConfig.maxBlockWeight), aria-valuemin="0" ,aria-valuemax="100")
+										span.text-primary #{full2}
 								else
 									span(title="This data is unavailable due to blockchain pruning", data-bs-toggle="tooltip")
 										i.bi-backspace.text-danger
-
 						else if (block.size)
 							td.text-end
-								- var bSizeK = parseInt(block.size / 1000);
-								- var fullPercent = new Decimal(100 * block.size / coinConfig.maxBlockSize).toDecimalPlaces(1);
-
+								- var bSizeK = parseInt(block.size / 1000)
+								- var fullPercent = new Decimal(100 * (block.size || 0) / coinConfig.maxBlockSize).toDecimalPlaces(1)
 								span #{bSizeK.toLocaleString()} 
 								small.fw-light.text-muted (#{fullPercent}%)
-
 								div.progress(style="height: 4px;")
-									div.progress-bar(role="progressbar", style=`width: ${fullPercent}%;`, aria-valuenow=parseInt(100 * block.size / coinConfig.maxBlockSize), aria-valuemin="0" ,aria-valuemax="100")
-
+									div.progress-bar(
+										role="progressbar", 
+										style=`width: ${fullPercent}%;`, 
+										aria-valuenow=parseInt(100 * (block.size || 0) / coinConfig.maxBlockSize), 
+										aria-valuemin="0", 
+										aria-valuemax="100"
+									)
 						else
 							td.text-end
 								span(title="This data is unavailable due to blockchain pruning", data-bs-toggle="tooltip")
 									i.bi-backspace.text-danger
 
-					- var lastBlock = block;
+					- var lastBlock = block

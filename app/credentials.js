@@ -38,7 +38,7 @@ function loadFreshRpcCredentials() {
 
 	return {
 		host: btcUri.hostname || process.env.BTCEXP_BITCOIND_HOST || "127.0.0.1",
-		port: btcUri.port || process.env.BTCEXP_BITCOIND_PORT || 8332,
+		port: btcUri.port || process.env.BTCEXP_BITCOIND_PORT || 22776,
 
 		authType: authType,
 
@@ -47,7 +47,7 @@ function loadFreshRpcCredentials() {
 		
 		authCookieFilepath: authCookieFilepath,
 		
-		timeout: parseInt(btcUri.query.timeout || process.env.BTCEXP_BITCOIND_RPC_TIMEOUT || 5000),
+		timeout: parseInt(btcUri.query.timeout || process.env.BTCEXP_BITCOIND_RPC_TIMEOUT || 6000),
 	};
 }
 

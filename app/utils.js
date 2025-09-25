@@ -22,14 +22,15 @@ const bip32 = BIP32Factory(ecc);
 const bitcoinjs = require('bitcoinjs-lib');
 
 
-
+const coinConfig = require('./../app/coins/mydoge.js');
 
 const config = require("./config.js");
 const coins = require("./coins.js");
-const coinConfig = coins[config.coin];
+//const coinConfig = coins[config.coin];
 const redisCache = require("./redisCache.js");
 const statTracker = require("./statTracker.js");
 
+const genesisBlockHash = global.genesisBlockHash
 
 const exponentScales = [
 	{val:1000000000000000000000000000000000, name:"?", abbreviation:"V", exponent:"33"},
@@ -1111,8 +1112,28 @@ function asHashOrHeight(value) {
 	return +value || asHash(value);
 }
 
-function asAddress(value) {
-	return value.replace(/[^a-z0-9]/gi, "");
+function asAddress(addr) {
+    if (!addr || typeof addr !== "string") return null;
+    addr = addr.trim();
+
+    try {
+        const decoded = bs58.decode(addr);
+        const prefix = decoded[0];
+
+        // Accept PUBKEY or SCRIPT address prefix
+        if (
+            MyDogecoin.base58Prefixes.PUBKEY_ADDRESS.includes(prefix) ||
+            MyDogecoin.base58Prefixes.SCRIPT_ADDRESS.includes(prefix)
+        ) {
+            return addr; // Return as-is even if checksum fails
+        }
+
+        throw new Error("Invalid MyDogecoin address prefix");
+    } catch (e) {
+        // If bs58.decode fails, still allow it in search (just mark as "unknown format")
+        return addr; // <-- this is key change
+        // Or optionally: throw new Error("Invalid MyDogecoin address format");
+    }
 }
 
 const arrayFromHexString = hexString =>
@@ -1506,7 +1527,7 @@ function nextHalvingEstimates(eraStartBlockHeader, currentBlockHeader, difficult
 	};
 }
 
-function tryParseAddress(address) {
+/*function tryParseAddress(address) {
 	let base58Error = null;
 	let bech32Error = null;
 	let bech32mError = null;
@@ -1572,6 +1593,21 @@ function tryParseAddress(address) {
 	}
 
 	return returnVal;
+}*/
+
+function tryParseAddress(addr) {
+    let parsedAddress = null;
+    let encoding = null;
+    const errors = [];
+
+    try {
+        parsedAddress = asAddress(addr);
+        encoding = "Base58";
+    } catch (e) {
+        errors.push(e.message);
+    }
+
+    return { parsedAddress, encoding, errors };
 }
 
 
@@ -1654,8 +1690,39 @@ function trackAppEvent(name, count=1, params=null) {
 		});
 	}
 }
+//--Add new------
+function getTotalTxVolume(txs) {
+    let totalVolume = new Decimal(0);
+
+    for (const tx of txs) {
+        for (const vout of tx.vout) {
+            totalVolume = totalVolume.plus(new Decimal(vout.value));
+        }
+    }
+
+    return totalVolume;
+}
+
+function getBlockVolume(block) {
+    let txVolume = getTotalTxVolume(block.tx || []);
+    let fees = getBlockTotalFeesFromCoinbaseTxAndBlockHeight(block.coinbaseTx, block.height);
+
+    return txVolume.minus(new Decimal(fees));
+}
+
+function getCirculatingSupply(height) {
+    return estimatedSupply(height);
+}
+
+function formatVolume(volume, coinUnit = coinConfig.baseCurrencyUnit.name) {
+    return `${formatCurrencyAmount(volume, coinUnit).val} ${coinUnit}`;
+}
 
 module.exports = {
+	formatVolume:formatVolume,
+	getCirculatingSupply:getCirculatingSupply,
+	getBlockVolume:getBlockVolume,
+	getTotalTxVolume:getTotalTxVolume,
 	reflectPromise: reflectPromise,
 	redirectToConnectPageIfNeeded: redirectToConnectPageIfNeeded,
 	formatHex: formatHex,

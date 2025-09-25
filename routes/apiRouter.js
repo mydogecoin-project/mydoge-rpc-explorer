@@ -106,34 +106,48 @@ router.get("/blocks/tip/height", asyncHandler(async (req, res, next) => {
 }));
 
 router.get("/block/:hashOrHeight", asyncHandler(async (req, res, next) => {
-	const hashOrHeight = req.params.hashOrHeight;
-	let hash = (hashOrHeight.length == 64 ? hashOrHeight : null);
+    const hashOrHeight = req.params.hashOrHeight;
+    let hash = (hashOrHeight.length === 64 ? hashOrHeight : null);
 
-	try {
+    try {
+        if (!hash) {
+            const height = parseInt(hashOrHeight);
+            if (isNaN(height)) {
+                return res.json({ success: false, error: "Invalid block height" });
+            }
+            hash = await rpcApi.getBlockHashByHeight(height);
+        }
 
-		if (hash == null) {
-			hash = await coreApi.getBlockHashByHeight(parseInt(hashOrHeight));
-		}
+        const block = await rpcApi.getBlockByHash(hash); // make sure this includes coinbaseTx
 
-		const block = await coreApi.getBlockByHash(hash);
+        // Ensure transactions array exists
+        if (!block.transactions || !Array.isArray(block.transactions)) {
+            block.transactions = [];
+        }
 
-		res.json(block);
+        // Include coinbase if empty
+        if (!block.transactions.length && block.coinbaseTx) {
+            block.transactions = [block.coinbaseTx];
+        }
 
-	} catch (e) {
-		utils.logError("w9fgeddsuos", e);
+        res.json({ success: true, block });
 
-		res.json({success: false});
-	}
+    } catch (e) {
+        utils.logError("w9fgeddsuos", e);
+        res.json({ success: false, error: e.message });
+    }
 
-	next();
+    next();
 }));
+
+
 
 router.get("/block/header/:hashOrHeight", asyncHandler(async (req, res, next) => {
 	const hashOrHeight = req.params.hashOrHeight;
-	let hash = (hashOrHeight.length == 64 ? hashOrHeight : null);
+	let hash = (hashOrHeight.length === 64 ? hashOrHeight : null);
 
 	try {
-		if (hash == null) {
+		if (!hash) {
 			hash = await coreApi.getBlockHashByHeight(parseInt(hashOrHeight));
 		}
 
@@ -143,15 +157,11 @@ router.get("/block/header/:hashOrHeight", asyncHandler(async (req, res, next) =>
 
 	} catch (e) {
 		utils.logError("w8kwqpoauns", e);
-
 		res.json({success: false});
 	}
 
 	next();
 }));
-
-
-
 
 /// TRANSACTIONS
 
@@ -184,7 +194,7 @@ router.get("/tx/:txid", asyncHandler(async (req, res, next) => {
 
 		outJson.fee = {
 			"amount": (inputBtc - outputBtc) / global.coinConfig.baseCurrencyUnit.multiplier,
-			"unit": "BTC"
+			"unit": "MYDOGE"
 		};
 
 		if (outJson.confirmations == null) {

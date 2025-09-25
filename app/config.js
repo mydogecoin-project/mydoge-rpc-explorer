@@ -33,7 +33,7 @@ while (s3BucketPath.endsWith("/")) {
 const coins = require("./coins.js");
 const credentials = require("./credentials.js");
 
-const currentCoin = process.env.BTCEXP_COIN || "BTC";
+const currentCoin = process.env.BTCEXP_COIN || "MYDOGE";
 
 const rpcCred = credentials.rpc;
 
@@ -87,7 +87,7 @@ const slowDeviceMode = (process.env.BTCEXP_SLOW_DEVICE_MODE.toLowerCase() == "tr
 
 module.exports = {
 	host: process.env.BTCEXP_HOST || "127.0.0.1",
-	port: process.env.PORT || process.env.BTCEXP_PORT || 3002,
+	port: process.env.PORT || process.env.BTCEXP_PORT || 22776,
 	secureSite: process.env.BTCEXP_SECURE_SITE == "true",
 
 	baseUrl: baseUrl,
@@ -96,7 +96,7 @@ module.exports = {
 	coin: currentCoin,
 
 	displayDefaults: {
-		displayCurrency: (process.env.BTCEXP_DISPLAY_CURRENCY || "btc"),
+		displayCurrency: (process.env.BTCEXP_DISPLAY_CURRENCY || "mydoge"),
 		localCurrency: (process.env.BTCEXP_LOCAL_CURRENCY || "usd"),
 		theme: (process.env.BTCEXP_UI_THEME || "dark"),
 		timezone: (process.env.BTCEXP_UI_TIMEZONE || "local")
@@ -227,10 +227,14 @@ module.exports = {
 		prioritizedToolIdsList: [0, 10, 11, 9, 3, 4, 16, 12, 2, 5, 15, 1, 6, 7, 13, 8],
 		toolSections: [
 			{name: "Basics", items: [0, 2]},
-			{name: "Mempool", items: [4, 16, 5]},
-			{name: "Analysis", items: [9, 18, 10, 11, 12, 3, 20]},
-			{name: "Technical", items: [15, 6, 7, 1]},
-			{name: "Fun", items: [8, 17, 19, 13]},
+			{name: "Mempool", items: [5]},
+			//{name: "Mempool", items: [4, 16, 5]},
+			{name: "Analysis", items: [9, 18]},
+			//{name: "Analysis", items: [9, 18, 10, 11, 12, 3, 20]},
+			{name: "Technical", items: [ 1]},
+			//{name: "Technical", items: [15, 6, 7, 1]},
+			//{name: "Fun", items: []},
+			//{name: "Fun", items: [8, 17, 19, 13]},
 		]
 	},
 
@@ -248,8 +252,8 @@ module.exports = {
 
 	/* 6 */		{name:"RPC Browser", url:"./rpc-browser", desc:"Browse the RPC functionality of this node. See docs and execute commands.", iconClass:"bi-journal-text"},
 	/* 7 */		{name:"RPC Terminal", url:"./rpc-terminal", desc:"Directly execute RPCs against this node.", iconClass:"bi-terminal"},
-
-	/* 8 */		{name:(coins[currentCoin].name + " Fun"), url:"./fun", desc:"Curated fun/interesting historical blockchain data.", iconClass:"bi-flag"},
+				{name: "DDD", url:"./fun", desc:"Curated fun/interesting historical blockchain data.", iconClass:"bi-flag"},
+	/* 8 */		//{name:(coins[currentCoin].name + " Fun"), url:"./fun", desc:"Curated fun/interesting historical blockchain data.", iconClass:"bi-flag"},
 
 	/* 9 */		{name:"Mining Summary", url:"./mining-summary", desc:"Summary of recent data about miners.", iconClass:"bi-hammer"},
 	/* 10 */	{name:"Block Stats", url:"./block-stats", desc:"Summary data for blocks in configurable range.", iconClass:"bi-stack"},

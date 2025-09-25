@@ -8,7 +8,7 @@ block content
 
 
 	+dismissableInfoAlert("miningSummaryPageNoteDismissed", "About Mining Summary...")
-		| !{markdown("The **Mining Summary** tool queries a range of blocks from Bitcoin Core and tries to identify the miner for each block. The identification of a mining entity is an imperfect process, relying on optional flagging by anonymous entities (though, in practice, it tends to work well).")}
+		| !{markdown("The **Mining Summary** tool queries a range of blocks from Mydogecoin Core and tries to identify the miner for each block. The identification of a mining entity is an imperfect process, relying on optional flagging by anonymous entities (though, in practice, it tends to work well).")}
 		| Use the <b>Filters</b> section below to select the range of blocks to analyze.
 
 
@@ -170,6 +170,8 @@ block endOfBody
 			$("#block-selections-buttons .dropdown-item").removeClass("disabled");
 
 			//console.log(JSON.stringify(results));
+			// ✅ FIX: Clear duplicates before adding new rows
+			$("#summary-table-body .miner-summary-row").remove();
 
 			var totalSubsidyPlusFees = new Decimal(summary.overall.totalSubsidy).plus(new Decimal(summary.overall.totalFees));
 
@@ -183,7 +185,7 @@ block endOfBody
 				var minerName = summary.minerNamesSortedByBlockCount[i];
 				var minerSummary = summary.miners[minerName];
 
-				var row = $("#miner-summary-prototype").clone();
+				var row = $("#miner-summary-prototype").clone(true);
 				row.attr("id", null);
 				row.addClass("miner-summary-row");
 

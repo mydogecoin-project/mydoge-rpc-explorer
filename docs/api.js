@@ -179,12 +179,12 @@ module.exports = {
 		{
 			"category":"mempool",
 			"url":"/mempool/count",
-			"desc":"Returns the number of transactions in Bitcoin Core's mempool."
+			"desc":"Returns the number of transactions in Mydogecoin Core's mempool."
 		},
 		{
 			"category":"mempool",
 			"url":"/mempool/summary",
-			"desc":"Returns a summary of Bitcoin Core's mempool (full output from 'getmempoolinfo')",
+			"desc":"Returns a summary of Mydogecoin Core's mempool (full output from 'getmempoolinfo')",
 			"example": {"loaded":true,"size":225,"bytes":76209,"usage":410496,"total_fee":0.01763495,"maxmempool":15000000,"mempoolminfee":0.00001,"minrelaytxfee":0.00001,"unbroadcastcount":0}
 		},
 		{
@@ -200,7 +200,7 @@ module.exports = {
 		{
 			"category":"price",
 			"url":"/price",
-			"desc":"Returns the price of 1 BTC, in USD, EUR, GBP, and XAU",
+			"desc":"Returns the price of 1 MYDOGE, in USD, EUR, GBP, and XAU",
 			"optionalParams": {
 				"format":"Set to 'true' to include thousands-separator formatting in results"
 			}

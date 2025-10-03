@@ -9,6 +9,7 @@ block headContent
 	//- Add flag icons CSS
 	link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/4.1.6/css/flag-icon.min.css", crossorigin="anonymous")
 
+
 	script(src=assetUrl("./leaflet/leaflet.js"), integrity= "", crossorigin="anonymous")
 
 	style.
@@ -23,7 +24,7 @@ block headContent
 			height: 400px;
 		}
 		.flag-column {
-			width: 140px;
+			width: 120px;
 		}
 		.flag-container {
 			display: flex;
@@ -45,48 +46,26 @@ block headContent
 			padding-top: 0 !important;
 		}
 
-		/* Debug styles */
-		.debug-info {
-			font-size: 0.75rem;
-			color: #6c757d;
-		}
-		.country-debug {
-			background-color: #fff3cd;
-			border: 1px solid #ffeaa7;
-			border-radius: 0.25rem;
-			padding: 0.5rem;
-			margin-bottom: 1rem;
-		}
-		.country-code-hover {
-			cursor: help;
-			border-bottom: 1px dotted #6c757d;
-		}
-
 block content
 	+pageTitle(`${peerSummary.getpeerinfo.length} Peer${peerSummary.getpeerinfo.length == 1 ? "" : "s"}`)
-	include ads.pug
-	+pageTabs(["Details", "JSON", "Debug"])
+	
+	+pageTabs(["Details", "JSON"])
 
 	.tab-content
 		+pageTab("Details", true)
 
 			//- Only show map if at least one peer has valid geo coordinates
 			- var hasGeoPeers = false;
-			- var geoPeersCount = 0;
 			- if (peerIpSummary && peerIpSummary.detailsByIp) {
 			-   for (var key in peerIpSummary.detailsByIp) {
 			-     if (peerIpSummary.detailsByIp[key].latitude && peerIpSummary.detailsByIp[key].longitude) {
 			-       hasGeoPeers = true;
-			-       geoPeersCount++;
+			-       break;
 			-     }
 			-   }
 			- }
-			
 			if hasGeoPeers
-				+contentSection(`Peer Locations Map (${geoPeersCount} peers with location data)`)
-					#map
-					.small.text-muted.mt-2
-						| Showing approximate locations for #{geoPeersCount} out of #{peerSummary.getpeerinfo.length} peers
+				#map
 
 			.row
 				.col-md-6
@@ -163,7 +142,7 @@ block content
 							th
 							th.text-card-highlight.text-uppercase.fw-light Version
 							th.text-card-highlight.text-uppercase.fw-light Address
-							th.text-card-highlight.text-uppercase.fw-light Country
+							th.text-card-highlight.text-uppercase.fw-light Flag / Country
 							th.text-card-highlight.text-uppercase.fw-light Services
 							th.text-card-highlight.text-uppercase.fw-light Conn. Type
 							th.text-card-highlight.text-uppercase.fw-light Last Send / Receive
@@ -178,20 +157,13 @@ block content
 							- var countryName = null;
 							- var city = null;
 							- var region = null;
-							- var hasGeoData = false;
 							
 							if (peerIpSummary && peerIpSummary.detailsByIp && peerIpSummary.detailsByIp[ipAddr])
 								- var ipDetails = peerIpSummary.detailsByIp[ipAddr];
-								- hasGeoData = true;
-								
-								//- Try multiple possible field names for country code
-								- countryCode = ipDetails.country_code || ipDetails.countryCode || ipDetails.country;
-								- countryName = ipDetails.country_name || ipDetails.countryName;
-								
-								//- Normalize country code to 2 letters if it exists
-								if (countryCode && typeof countryCode === 'string')
-									- countryCode = countryCode.toLowerCase().substring(0, 2);
-								
+								if (ipDetails.country_code)
+									- countryCode = ipDetails.country_code.toLowerCase();
+								if (ipDetails.country_name)
+									- countryName = ipDetails.country_name;
 								if (ipDetails.city)
 									- city = ipDetails.city;
 								if (ipDetails.region)
@@ -208,30 +180,16 @@ block content
 											| #{utils.ellipsizeMiddle(item.addr, 21)}
 									else
 										| #{item.addr}
+
 								td.flag-column
 									if (countryCode && countryCode.length === 2)
-										- var locationParts = [];
-										if (city) 
-											- locationParts.push(city);
-										if (region) 
-											- locationParts.push(region);
-										if (countryName) 
-											- locationParts.push(countryName);
-										- var tooltipText = locationParts.join(', ') || 'Unknown location';
+										- var tooltipText = countryName || 'Unknown country';
 										span.border-dotted(title=tooltipText, data-bs-toggle="tooltip")
 											span.flag-container
-												span(class=`flag-icon flag-icon-${countryCode}`)
+												span.flag-icon(class=`flag-icon-${countryCode.toLowerCase()}`)
 												span.small #{countryCode.toUpperCase()}
-									else if (countryName)
-										span.border-dotted(title=countryName, data-bs-toggle="tooltip")
-											span.flag-container
-												span.small 🌐 #{countryName}
-									else if (hasGeoData)
-										span.border-dotted(title="Location data available but no country info", data-bs-toggle="tooltip")
-											span.flag-container
-												span.small.text-muted ?
 									else
-										span.border-dotted(title="No location data available", data-bs-toggle="tooltip")
+										span.border-dotted(title="Location data not available", data-bs-toggle="tooltip")
 											span.flag-container
 												span.small.text-muted N/A
 
@@ -268,114 +226,6 @@ block content
 							pre.mb-0
 								code.json #{JSON.stringify(peerIpSummary.detailsByIp[ipAddr], null, 4)}
 
-		+pageTab("Debug")
-			+contentSection("Country Data Debug")
-				.row
-					.col-md-6
-						h6 IP Geolocation Summary
-						table.table.table-sm
-							tr
-								td Total Peers:
-								td #{peerSummary.getpeerinfo.length}
-							tr
-								td IPs with Geolocation Data:
-								td #{(peerIpSummary && peerIpSummary.ips) ? peerIpSummary.ips.length : 0}
-							tr
-								td Peers with Valid Coordinates:
-								td #{geoPeersCount}
-							tr
-								td Map API Key Available:
-								td #{mapBoxComApiAccessKey ? 'Yes' : 'No'}
-
-					.col-md-6
-						h6 Sample IP Data (First 5)
-						if (peerIpSummary && peerIpSummary.ips && peerIpSummary.ips.length > 0)
-							each ip, idx in peerIpSummary.ips.slice(0, 5)
-								- var details = peerIpSummary.detailsByIp[ip];
-								.country-debug.mb-2
-									strong #{ip}:
-									pre.debug-info.mb-0 #{JSON.stringify(details, null, 2)}
-						else
-							p.text-muted No IP geolocation data available
-
-			//- Initialize country data variables with safe defaults
-			- var countryStats = {};
-			- var countryFullNames = {};
-			- var totalWithCountry = 0;
-			
-			if (peerIpSummary && peerIpSummary.detailsByIp && peerIpSummary.ips)
-				each ip in peerIpSummary.ips
-					- var details = peerIpSummary.detailsByIp[ip];
-					if (details)
-						- var code = details.country_code || details.countryCode || details.country;
-						- var fullName = details.country_name || details.countryName;
-						if (code)
-							- totalWithCountry++;
-							- countryStats[code] = (countryStats[code] || 0) + 1;
-							if (fullName)
-								- countryFullNames[code] = fullName;
-
-			+contentSection("Country Code Analysis")
-				.row
-					.col-md-6
-						h6 Country Distribution
-						if (Object.keys(countryStats).length > 0)
-							table.table.table-sm
-								thead
-									tr
-										th Country Code
-										th Count
-								tbody
-									each count, code in countryStats
-										- var fullName = countryFullNames[code] || "Unknown country";
-										tr
-											td 
-												span.country-code-hover(title=fullName, data-bs-toggle="tooltip") #{code}
-											td #{count}
-						else
-							p.text-muted No country codes found in data
-					.col-md-6
-						h6 Statistics
-						table.table.table-sm
-							tr
-								td IPs with any country data:
-								td #{totalWithCountry}
-							tr
-								td Unique countries:
-								td #{Object.keys(countryStats).length}
-							tr
-								td Valid 2-letter codes:
-								td 
-									- var validCodes = Object.keys(countryStats).filter(code => code && code.length === 2);
-									| #{validCodes.length}
-							tr
-								td Countries with full names:
-								td #{Object.keys(countryFullNames).length}
-
-			+contentSection("Country Code Reference")
-				.row
-					.col-md-12
-						h6 Common Country Codes and Full Names
-						- var hasCountryData = countryStats && Object.keys(countryStats).length > 0;
-						if (hasCountryData)
-							.table-responsive
-								table.table.table-sm.table-striped
-									thead
-										tr
-											th Country Code
-											th Full Country Name
-											th Count
-									tbody
-										each count, code in countryStats
-											- var fullName = (countryFullNames && countryFullNames[code]) || "Unknown country";
-											tr
-												td 
-													strong #{code}
-												td #{fullName}
-												td #{count}
-						else
-							p.text-muted No country data available
-
 block endOfBody
 	script(src=assetUrl("./js/jquery.dataTables.min.js"), integrity= "", crossorigin="anonymous")
 	script(src=assetUrl("./js/dataTables.bootstrap4.min.js"), integrity= "", crossorigin="anonymous")
@@ -392,64 +242,46 @@ block endOfBody
 				},
 				dom: '<"d-flex justify-content-between align-items-center mb-3"<"d-flex align-items-center"l><"d-flex align-items-center"f>>t<"d-flex justify-content-between align-items-center mt-3"<"d-flex align-items-center"i><"d-flex align-items-center"p>>'
 			});
-
-			// Initialize tooltips
-			$('[data-bs-toggle="tooltip"]').tooltip();
-			
-			// Initialize country code hover tooltips
-			$('.country-code-hover').tooltip({
-				trigger: 'hover',
-				placement: 'top'
-			});
 		});
 
 	if hasGeoPeers && (mapBoxComApiAccessKey != undefined)
 		script.
+			var mymap = L.map('map').setView([21.505, -0.09], 3);
+
+			L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=!{mapBoxComApiAccessKey}', {
+				maxZoom: 18,
+				attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> ' +
+					'© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+					'<strong><a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong> ' +
+					'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+				id: 'mapbox/streets-v11'
+			}).addTo(mymap);
+
 			$(document).ready(function() {
-				var mymap = L.map('map').setView([21.505, -0.09], 3);
-
-				L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=!{mapBoxComApiAccessKey}', {
-					maxZoom: 18,
-					attribution: '© <a href="https://www.mapbox.com/about/maps/">Mapbox</a> ' +
-						'© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
-						'<strong><a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong> ' +
-						'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-					id: 'mapbox/streets-v11'
-				}).addTo(mymap);
-
-				// Add markers for peers with location data
-				!{JSON.stringify(peerIpSummary.ips)}.forEach(function(ip) {
-					var ipDetails = !{JSON.stringify(peerIpSummary.detailsByIp)};
-					if (ipDetails[ip] && ipDetails[ip].latitude && ipDetails[ip].longitude) {
-						var details = ipDetails[ip];
-						var locationParts = [];
-						if (details.city) locationParts.push(details.city);
-						if (details.region_name) locationParts.push(details.region_name);
-						else if (details.region) locationParts.push(details.region);
-						if (details.country_name) locationParts.push(details.country_name);
-						
-						var locationText = locationParts.join(', ');
-						var popupContent = "<b>" + ip + "</b><br>";
-						if (locationText) popupContent += locationText;
-
-						// Add flag if country code is available
-						var countryCode = details.country_code || details.countryCode || details.country;
-						if (countryCode && countryCode.length === 2) {
-							popupContent = "<div style='display: flex; align-items: center; gap: 8px; margin-bottom: 8px;'>" +
-								"<span class='flag-icon flag-icon-" + countryCode.toLowerCase() + "'></span>" +
-								"<span><b>" + ip + "</b></span>" +
-								"</div>" + locationText;
-						}
-
-						L.marker([details.latitude, details.longitude])
-							.addTo(mymap)
-							.bindPopup(popupContent);
-					}
-				});
-
-				// Trigger resize after map is initialized
-				setTimeout(function() {
-					window.dispatchEvent(new Event('resize'));
-					mymap.invalidateSize();
-				}, 100);
+				window.dispatchEvent(new Event('resize'));
 			});
+
+		each ipAddress, index in peerIpSummary.ips
+			- var ipDetails = peerIpSummary.detailsByIp[ipAddress];
+			if (ipDetails && ipDetails.latitude && ipDetails.longitude)
+				- var locationParts = [];
+				if (ipDetails.city)
+					- locationParts.push(ipDetails.city);
+				if (ipDetails.region_name)
+					- locationParts.push(ipDetails.region_name);
+				else if (ipDetails.region)
+					- locationParts.push(ipDetails.region);
+				if (ipDetails.country_name)
+					- locationParts.push(ipDetails.country_name);
+				
+				- var locationText = locationParts.join(', ');
+				- var ipDetailsPopupHtml = "<b>" + ipAddress + "</b><br>";
+				if (locationText)
+					- ipDetailsPopupHtml += locationText;
+
+				//- Add flag to map popup if country code valid (2 letters)
+				if (ipDetails.country_code && ipDetails.country_code.length === 2)
+					- ipDetailsPopupHtml = "<div style='display: flex; align-items: center; gap: 8px;'><span class='flag-icon flag-icon-" + ipDetails.country_code.toLowerCase() + "'></span><span><b>" + ipAddress + "</b></span></div><br>" + locationText;
+
+				script.
+					L.marker([#{ipDetails.latitude}, #{ipDetails.longitude}]).addTo(mymap).bindPopup("!{ipDetailsPopupHtml}");

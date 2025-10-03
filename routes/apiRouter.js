@@ -28,7 +28,6 @@ const btcQuotes = require("./../app/coins/btcQuotes.js");
 
 
 
-
 router.get("/docs", function(req, res, next) {
 	res.locals.apiDocs = apiDocs;
 	res.locals.apiBaseUrl = apiDocs.baseUrl;

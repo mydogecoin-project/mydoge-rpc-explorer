@@ -4,8 +4,9 @@ block headContent
 	title Block Stats
 
 block content
+	
 	+pageTitle("Block Stats")
-
+	include ads.pug
 	if (rpcApiUnsupportedError)
 		div.alert.alert-danger(style="margin-bottom: 200px;")
 			span Your node version doesn't support the 

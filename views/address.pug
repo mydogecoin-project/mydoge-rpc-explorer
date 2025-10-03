@@ -4,6 +4,7 @@ block headContent
 	title Address #{address}
 
 block content
+	include ads.pug
 	if (result && result.validateaddress)
 		if (!result.validateaddress.isvalid)
 			div.alert.alert-danger.mb-huge

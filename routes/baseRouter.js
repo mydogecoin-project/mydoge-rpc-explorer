@@ -110,7 +110,7 @@ router.get("/blocks", asyncHandler(async (req, res, next) => {
                 if (totalVolume.eq(0)) totalVolume = totalVolume.plus(new Decimal(block.reward || 5));
             } catch (err) {
                 console.warn(`Unable to fetch block ${block.height} volume:`, err.message);
-                totalVolume = totalVolume.plus(new Decimal(block.reward || 5));
+                totalVolume = totalVolume.plus(new Decimal(block.reward || 2.5));
             }
             block.totalVolume = totalVolume.toNumber();
         }));

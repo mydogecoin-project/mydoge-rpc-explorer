@@ -92,7 +92,7 @@ module.exports = {
 		"signet": "https://signet.bitcoinexplorer.org",
 	},
 	knownTransactionsByNetwork: {
-		main: "f692ac6987af3797c45328d03af377922a661701d04c6e22faeffcf54e33a8e4"
+		main: "ccdb9533d14a8280345b862cab4e03c6323ab7e11a631f3985b17580fb22e5e8"
 		//test: "22e7e860660f368b5c653c272b0445a0625d19fdec02fc158ef9800a5c3a07e8",
 		//signet: "39332e10af6fe491e8ae4ba1e2dd674698fedf8aa3c8c42bf71572debc1bb5b9"
 	},
@@ -159,19 +159,19 @@ module.exports = {
 	},
 	coinbaseMaturity: 30,
     powTargetSpacing: 60,
-    powTargetTimespan: 4 * 60 * 60,
+    powTargetTimespan: 1 * 60 * 60,
     nSubsidyHalvingInterval: 1000000000,
-	genesisBlockHash: "d63fc9f6b1ac2a9c28d7874d8f279188de6970e01dcbed850570d5c09c2c07bf",
+	genesisBlockHash: "ccdb9533d14a8280345b862cab4e03c6323ab7e11a631f3985b17580fb22e5e8",
 	utxoSetCheckpointsByNetwork: {
 		// this includes values from running gettxoutsetinfo with both "muhash" and "hash_serialized_2" params
 		"main": {
 			// "muhash"
-			"height": 104,
-			"bestblock": "a5d41da0b1fd759012109fe949855864be230825f0f04b835d5ff4e247f28fba",
-			"txouts": 110,
-			"bogosize": 6154,
-			"muhash": "d773163340fbcc49433ae5e6d2e5272265fc1c5e93b65d23f1b183657c9a3ad3",
-			"total_amount": "10000515",
+			"height": 1437,
+			"bestblock": "e4870190a6eb19247fde6b7227bd9f9aa53548884f80dc665d25f648ee4f0de5",
+			"txouts": 1281,
+			"bogosize": 83753,
+			"muhash": "2c5831ae528cf4356f1dc4a9735e81499f9faaf94169fdb2351ef7ebfcbcd5fc",
+			"total_amount": "10003590",
 			"total_unspendable_amount": "219.292143",
 
 			// "hash_serialized_2"
@@ -584,10 +584,11 @@ module.exports = {
 			return null;
 		}
 	},
+	// block reward for https://explorer.mydogecoin.fun/block-height/34
 	blockRewardFunction:function(blockHeight, chain) {
 		let halvingBlockInterval = (chain == "regtest" ? 150 : 210000);
 		let index = Math.floor(blockHeight / halvingBlockInterval);
-		return 5;
+		return 2.5;
 		//return blockRewardEras[index];
 	}
 };

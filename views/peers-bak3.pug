@@ -65,7 +65,7 @@ block headContent
 block content
 	+pageTitle(`${peerSummary.getpeerinfo.length} Peer${peerSummary.getpeerinfo.length == 1 ? "" : "s"}`)
 	include ads.pug
-	+pageTabs(["Details", "JSON"])
+	+pageTabs(["Details", "JSON", "Debug"])
 
 	.tab-content
 		+pageTab("Details", true)
@@ -82,7 +82,7 @@ block content
 			-   }
 			- }
 			
-			//if hasGeoPeers
+			if hasGeoPeers
 				+contentSection(`Peer Locations Map (${geoPeersCount} peers with location data)`)
 					#map
 					.small.text-muted.mt-2
@@ -268,6 +268,113 @@ block content
 							pre.mb-0
 								code.json #{JSON.stringify(peerIpSummary.detailsByIp[ipAddr], null, 4)}
 
+		+pageTab("Debug")
+			+contentSection("Country Data Debug")
+				.row
+					.col-md-6
+						h6 IP Geolocation Summary
+						table.table.table-sm
+							tr
+								td Total Peers:
+								td #{peerSummary.getpeerinfo.length}
+							tr
+								td IPs with Geolocation Data:
+								td #{(peerIpSummary && peerIpSummary.ips) ? peerIpSummary.ips.length : 0}
+							tr
+								td Peers with Valid Coordinates:
+								td #{geoPeersCount}
+							tr
+								td Map API Key Available:
+								td #{mapBoxComApiAccessKey ? 'Yes' : 'No'}
+
+					.col-md-6
+						h6 Sample IP Data (First 5)
+						if (peerIpSummary && peerIpSummary.ips && peerIpSummary.ips.length > 0)
+							each ip, idx in peerIpSummary.ips.slice(0, 5)
+								- var details = peerIpSummary.detailsByIp[ip];
+								.country-debug.mb-2
+									strong #{ip}:
+									pre.debug-info.mb-0 #{JSON.stringify(details, null, 2)}
+						else
+							p.text-muted No IP geolocation data available
+
+			//- Initialize country data variables with safe defaults
+			- var countryStats = {};
+			- var countryFullNames = {};
+			- var totalWithCountry = 0;
+			
+			if (peerIpSummary && peerIpSummary.detailsByIp && peerIpSummary.ips)
+				each ip in peerIpSummary.ips
+					- var details = peerIpSummary.detailsByIp[ip];
+					if (details)
+						- var code = details.country_code || details.countryCode || details.country;
+						- var fullName = details.country_name || details.countryName;
+						if (code)
+							- totalWithCountry++;
+							- countryStats[code] = (countryStats[code] || 0) + 1;
+							if (fullName)
+								- countryFullNames[code] = fullName;
+
+			+contentSection("Country Code Analysis")
+				.row
+					.col-md-6
+						h6 Country Distribution
+						if (Object.keys(countryStats).length > 0)
+							table.table.table-sm
+								thead
+									tr
+										th Country Code
+										th Count
+								tbody
+									each count, code in countryStats
+										- var fullName = countryFullNames[code] || "Unknown country";
+										tr
+											td 
+												span.country-code-hover(title=fullName, data-bs-toggle="tooltip") #{code}
+											td #{count}
+						else
+							p.text-muted No country codes found in data
+					.col-md-6
+						h6 Statistics
+						table.table.table-sm
+							tr
+								td IPs with any country data:
+								td #{totalWithCountry}
+							tr
+								td Unique countries:
+								td #{Object.keys(countryStats).length}
+							tr
+								td Valid 2-letter codes:
+								td 
+									- var validCodes = Object.keys(countryStats).filter(code => code && code.length === 2);
+									| #{validCodes.length}
+							tr
+								td Countries with full names:
+								td #{Object.keys(countryFullNames).length}
+
+			+contentSection("Country Code Reference")
+				.row
+					.col-md-12
+						h6 Common Country Codes and Full Names
+						- var hasCountryData = countryStats && Object.keys(countryStats).length > 0;
+						if (hasCountryData)
+							.table-responsive
+								table.table.table-sm.table-striped
+									thead
+										tr
+											th Country Code
+											th Full Country Name
+											th Count
+									tbody
+										each count, code in countryStats
+											- var fullName = (countryFullNames && countryFullNames[code]) || "Unknown country";
+											tr
+												td 
+													strong #{code}
+												td #{fullName}
+												td #{count}
+						else
+							p.text-muted No country data available
 
 block endOfBody
 	script(src=assetUrl("./js/jquery.dataTables.min.js"), integrity= "", crossorigin="anonymous")

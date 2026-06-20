@@ -246,14 +246,31 @@ html(lang="en")
 
 				div(style="margin-bottom: 30px;")
 
-		footer.footer.border-top.border-primary.bg-header-footer.pt-3.pb-1.text-white(style="border-width: 0px !important;")
-		.container
+
+		footer.footer.border-top.border-primary.bg-header-footer.pt-3.pb-1.text-white(style="border-width: 0px !important; height: 100px; min-height: 100px; max-height: 150px; display: flex; align-items: center; flex-shrink: 0; margin-top: auto;")
+				.container
+					.row.mb-0
+					.col-12.col-md-7
+						.mb-0
+						h9
+						span(style="font-weight: bold;color:white;") Dogecoin 
+						|  (DOGE) Donation : DTvCTPxonX1yvcPadjuxbmPJC4vGjQdAbs
+						br
+						h9
+						| &copy; 
+						script(type="text/javascript").
+							document.write(new Date().getFullYear());
+						|  by Hypercoin
+						br
+
+		//footer.footer.border-top.border-primary.bg-header-footer.pt-3.pb-1.text-white(style="border-width: 0px !important;")
+		//.container
 			.row.mb-7
 			.col-12.col-md-7
 				.mb-4
 				h9 <span style="font-weight: bold;color:white;">Dogecoin (DOGE) Donation : DTvCTPxonX1yvcPadjuxbmPJC4vGjQdAbs </span><Br>
 				h9 <span style="font-weight: bold;color:white;">&copy; <script type="text/javascript">document.write(new Date().getFullYear());</script> by Mydogecoin </span><Br><Br><Br>
-				//h9 Version: #{global.appVersion}				
+				h9 Version: #{global.appVersion}				
 
 		+sharedScriptTags
 		

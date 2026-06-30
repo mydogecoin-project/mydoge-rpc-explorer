@@ -230,7 +230,7 @@ if (exchangeRates)
 		+summaryItem("Max Supply / Circulation", utxoSetSummary ? null : `Circulation`)
 			- var maxSupply = coinConfig.maxSupplyByNetwork[activeBlockchain];
 			- var estimatedSupply = utils.estimatedSupply(getblockchaininfo.blocks);
-			span.ms-2.text-muted(style="font-size: 13pt;color: black !important;") ∞ /  #{parseFloat(utxoSetSummary.total_amount).toLocaleString()}
+			span.ms-2.text-muted(style="font-size: 13pt;") ∞ /  #{parseFloat(utxoSetSummary.total_amount).toLocaleString()}
 
 
 	hr.mt-3.mb-3

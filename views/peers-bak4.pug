@@ -7,7 +7,7 @@ block headContent
 	link(rel="stylesheet", href=assetUrl("./leaflet/leaflet.css"), integrity= "", crossorigin="anonymous")
 
 	//- Add flag icons CSS
-	//link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/4.1.6/css/flag-icon.min.css", crossorigin="anonymous")
+	link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/4.1.6/css/flag-icon.min.css", crossorigin="anonymous")
 
 	script(src=assetUrl("./leaflet/leaflet.js"), integrity= "", crossorigin="anonymous")
 
@@ -22,18 +22,13 @@ block headContent
 		#map.active {
 			height: 400px;
 		}
-		/*.flag-column {
-		//	width: 140px;
-		//}
-		//.flag-container {
-		//	display: flex;
-		//	align-items: center;
-		//	gap: 0.5rem;
-		//}*/
+		.flag-column {
+			width: 140px;
+		}
 		.flag-container {
-			display: inline-flex;
+			display: flex;
 			align-items: center;
-			gap: 5px;
+			gap: 0.5rem;
 		}
 		.dataTables_wrapper .dataTables_length,
 		.dataTables_wrapper .dataTables_filter {
@@ -213,36 +208,28 @@ block content
 											| #{utils.ellipsizeMiddle(item.addr, 21)}
 									else
 										| #{item.addr}
-
 								td.flag-column
 									if (countryCode && countryCode.length === 2)
 										- var locationParts = [];
-										if (city)
+										if (city) 
 											- locationParts.push(city);
-										if (region)
+										if (region) 
 											- locationParts.push(region);
-										if (countryName)
+										if (countryName) 
 											- locationParts.push(countryName);
-
 										- var tooltipText = locationParts.join(', ') || 'Unknown location';
-										- var flagEmoji = String.fromCodePoint(...countryCode.toUpperCase().split('').map(function(c) { return 127397 + c.charCodeAt(0); }));
-
 										span.border-dotted(title=tooltipText, data-bs-toggle="tooltip")
 											span.flag-container
-												span.small #{flagEmoji}
+												span(class=`flag-icon flag-icon-${countryCode}`)
 												span.small #{countryCode.toUpperCase()}
-
 									else if (countryName)
 										span.border-dotted(title=countryName, data-bs-toggle="tooltip")
 											span.flag-container
-												span.small 🌐
-												span.small #{countryName}
-
+												span.small 🌐 #{countryName}
 									else if (hasGeoData)
 										span.border-dotted(title="Location data available but no country info", data-bs-toggle="tooltip")
 											span.flag-container
 												span.small.text-muted ?
-
 									else
 										span.border-dotted(title="No location data available", data-bs-toggle="tooltip")
 											span.flag-container

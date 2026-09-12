@@ -486,7 +486,7 @@ router.get("/mempool-summary", asyncHandler(async (req, res, next) => {
 // Geo-location functions for peers
 // ============================================================================
 
-async function getCountryFromIP(ip) {
+/*async function getCountryFromIP(ip) {
     try {
         // Using ipwho.is (free, no API key required)
         const response = await fetch(`https://ipwho.is/${ip}`);
@@ -510,7 +510,419 @@ async function getCountryFromIP(ip) {
     }
 
     return null;
+}*/
+// 1 minute = 60 * 1000 ms
+// 1 hour  = 60 * 60 * 1000
+// 1 day   = 24 * 60 * 60 * 1000
+// 7 days  = 7 * 24 * 60 * 60 * 1000
+
+
+
+
+
+
+
+async function getCountryFromIP(ip) {
+    const fs = require('fs');
+
+    const cacheDir = '/root/mydoge-rpc-explorer/cache';
+    const cacheFile = `${cacheDir}/ip-cache.json`;
+
+    // ---------------------------------------------------------
+    // Successful cache lifetime
+    //
+    // 1 hour = 60 * 60 * 1000
+    // 1 day  = 24 * 60 * 60 * 1000
+    // 7 days = 7 * 24 * 60 * 60 * 1000
+    // ---------------------------------------------------------
+    const cacheMaxAge = 48 * 60 * 60 * 1000
+
+    let cache = {};
+
+    // ---------------------------------------------------------
+    // Standard empty data format
+    // ---------------------------------------------------------
+    function emptyCountryData() {
+        return {
+            country_code: null,
+            country_name: null,
+            city: null,
+            region: null,
+            region_name: null,
+            latitude: null,
+            longitude: null
+        };
+    }
+
+    // ---------------------------------------------------------
+    // Check if record contains real country data
+    // ---------------------------------------------------------
+    function hasCountryData(record) {
+        return !!(
+            record &&
+            record.data &&
+            typeof record.data === 'object' &&
+            typeof record.data.country_code === 'string' &&
+            record.data.country_code.trim() !== '' &&
+            typeof record.data.country_name === 'string' &&
+            record.data.country_name.trim() !== ''
+        );
+    }
+
+    // ---------------------------------------------------------
+    // Create cache directory/file
+    // ---------------------------------------------------------
+    try {
+        if (!fs.existsSync(cacheDir)) {
+            fs.mkdirSync(cacheDir, {
+                recursive: true
+            });
+
+            console.log(
+                `Created cache directory: ${cacheDir}`
+            );
+        }
+
+        if (!fs.existsSync(cacheFile)) {
+            fs.writeFileSync(
+                cacheFile,
+                '{}',
+                'utf8'
+            );
+
+            console.log(
+                `Created IP cache file: ${cacheFile}`
+            );
+        }
+    } catch (error) {
+        console.error(
+            `Failed to create IP cache: ${cacheFile}`,
+            error
+        );
+    }
+
+    // ---------------------------------------------------------
+    // Load existing cache
+    // ---------------------------------------------------------
+    try {
+        if (fs.existsSync(cacheFile)) {
+            const content = fs
+                .readFileSync(cacheFile, 'utf8')
+                .trim();
+
+            if (content) {
+                cache = JSON.parse(content);
+            } else {
+                cache = {};
+            }
+        }
+    } catch (error) {
+        console.error(
+            'Failed to read IP cache:',
+            error
+        );
+
+        cache = {};
+    }
+
+    // ---------------------------------------------------------
+    // Existing record
+    // ---------------------------------------------------------
+    const existing = cache[ip];
+
+    const existingHasCountry = hasCountryData(existing);
+
+    let age = Infinity;
+
+    if (
+        existing &&
+        typeof existing.timestamp === 'number'
+    ) {
+        age = Date.now() - existing.timestamp;
+    }
+
+    // ---------------------------------------------------------
+    // EXISTING SUCCESSFUL RECORD
+    // ---------------------------------------------------------
+    if (existingHasCountry) {
+
+        // Cache still valid
+        if (age < cacheMaxAge) {
+            console.log(
+                `IP cache hit: ${ip} -> ` +
+                `${existing.data.country_code} ` +
+                `${existing.data.country_name}`
+            );
+
+            return existing.data;
+        }
+
+        // Cache expired.
+        //
+        // DO NOT DELETE THE RECORD.
+        //
+        // We will try API refresh, but if API fails,
+        // the old country data remains.
+        console.log(
+            `IP cache expired: ${ip}, refreshing...`
+        );
+    }
+
+    // ---------------------------------------------------------
+    // EXISTING FAILED RECORD
+    // ---------------------------------------------------------
+    //
+    // If there is no country data and the failure is still
+    // inside cacheMaxAge, don't call the API again.
+    //
+    // Keep the complete standard record.
+    // ---------------------------------------------------------
+    if (
+        existing &&
+        !existingHasCountry &&
+        existing.failed === true &&
+        age < cacheMaxAge
+    ) {
+        console.log(
+            `IP cached failure: ${ip} -> ` +
+            `${existing.error || 'Unknown error'}`
+        );
+
+        return null;
+    }
+
+    // ---------------------------------------------------------
+    // API REQUEST
+    // ---------------------------------------------------------
+    try {
+        console.log(
+            `Querying ipwho.is for ${ip}...`
+        );
+
+        const response = await fetch(
+            `https://ipwho.is/${ip}`
+        );
+
+        const data = await response.json();
+
+        // -----------------------------------------------------
+        // SUCCESS
+        // -----------------------------------------------------
+        if (
+            data &&
+            data.success === true &&
+            data.country_code &&
+            data.country
+        ) {
+            const countryInfo = {
+                country_code: data.country_code,
+                country_name: data.country,
+                city: data.city || null,
+                region: data.region || null,
+                region_name: data.region || null,
+                latitude: data.latitude || null,
+                longitude: data.longitude || null
+            };
+
+            // -------------------------------------------------
+            // UPDATE ONLY THIS IP
+            //
+            // Other IP records are untouched.
+            // -------------------------------------------------
+            cache[ip] = {
+                timestamp: Date.now(),
+                failed: false,
+                data: countryInfo,
+                error: null
+            };
+
+            // -------------------------------------------------
+            // Save cache
+            // -------------------------------------------------
+            try {
+                fs.writeFileSync(
+                    cacheFile,
+                    JSON.stringify(cache, null, 2),
+                    'utf8'
+                );
+
+                console.log(
+                    `IP cache UPDATED: ${ip} -> ` +
+                    `${countryInfo.country_code} ` +
+                    `${countryInfo.country_name}`
+                );
+            } catch (writeError) {
+                console.error(
+                    `Failed to write cache for ${ip}:`,
+                    writeError
+                );
+            }
+
+            return countryInfo;
+        }
+
+        // -----------------------------------------------------
+        // API ERROR
+        // -----------------------------------------------------
+        const errorMessage =
+            data && data.message
+                ? data.message
+                : 'IP lookup failed';
+
+        console.log(
+            `ipwho.is error for ${ip}: ${errorMessage}`
+        );
+
+        // -----------------------------------------------------
+        // EXISTING REAL COUNTRY DATA
+        //
+        // NEVER replace successful country data with an error.
+        // -----------------------------------------------------
+        if (existingHasCountry) {
+            console.log(
+                `Keeping old country data for ${ip}: ` +
+                `${existing.data.country_code} ` +
+                `${existing.data.country_name}`
+            );
+
+            return existing.data;
+        }
+
+        // -----------------------------------------------------
+        // NO REAL COUNTRY DATA
+        //
+        // Keep the IP record but use the standard format.
+        //
+        // data is NEVER null.
+        // -----------------------------------------------------
+        cache[ip] = {
+            timestamp: Date.now(),
+            failed: true,
+            data: existing && existing.data
+                ? {
+                    country_code:
+                        existing.data.country_code || null,
+                    country_name:
+                        existing.data.country_name || null,
+                    city:
+                        existing.data.city || null,
+                    region:
+                        existing.data.region || null,
+                    region_name:
+                        existing.data.region_name || null,
+                    latitude:
+                        existing.data.latitude || null,
+                    longitude:
+                        existing.data.longitude || null
+                }
+                : emptyCountryData(),
+            error: errorMessage
+        };
+
+        // -----------------------------------------------------
+        // Save ONLY the updated cache object.
+        // All other IPs remain.
+        // -----------------------------------------------------
+        try {
+            fs.writeFileSync(
+                cacheFile,
+                JSON.stringify(cache, null, 2),
+                'utf8'
+            );
+
+            console.log(
+                `IP error saved: ${ip} -> ${errorMessage}`
+            );
+        } catch (writeError) {
+            console.error(
+                `Failed to save error for ${ip}:`,
+                writeError
+            );
+        }
+
+        return null;
+
+    } catch (error) {
+
+        // -----------------------------------------------------
+        // FETCH / NETWORK ERROR
+        // -----------------------------------------------------
+        const errorMessage =
+            error && error.message
+                ? error.message
+                : 'Fetch failed';
+
+        console.error(
+            `Fetch error for ${ip}: ${errorMessage}`
+        );
+
+        // -----------------------------------------------------
+        // Existing successful country data ALWAYS wins.
+        // -----------------------------------------------------
+        if (existingHasCountry) {
+            console.log(
+                `Keeping old country data for ${ip}: ` +
+                `${existing.data.country_code} ` +
+                `${existing.data.country_name}`
+            );
+
+            return existing.data;
+        }
+
+        // -----------------------------------------------------
+        // No country data.
+        //
+        // Keep standard format.
+        // -----------------------------------------------------
+        cache[ip] = {
+            timestamp: Date.now(),
+            failed: true,
+            data: existing && existing.data
+                ? {
+                    country_code:
+                        existing.data.country_code || null,
+                    country_name:
+                        existing.data.country_name || null,
+                    city:
+                        existing.data.city || null,
+                    region:
+                        existing.data.region || null,
+                    region_name:
+                        existing.data.region_name || null,
+                    latitude:
+                        existing.data.latitude || null,
+                    longitude:
+                        existing.data.longitude || null
+                }
+                : emptyCountryData(),
+            error: errorMessage
+        };
+
+        // -----------------------------------------------------
+        // Save cache
+        // -----------------------------------------------------
+        try {
+            fs.writeFileSync(
+                cacheFile,
+                JSON.stringify(cache, null, 2),
+                'utf8'
+            );
+
+            console.log(
+                `IP fetch error saved: ${ip} -> ${errorMessage}`
+            );
+        } catch (writeError) {
+            console.error(
+                `Failed to save fetch error for ${ip}:`,
+                writeError
+            );
+        }
+
+        return null;
+    }
 }
+
+
 
 async function enhancePeerDataWithCountries(peerIps) {
     const detailsByIp = {};

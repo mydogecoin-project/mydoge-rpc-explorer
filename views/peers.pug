@@ -277,9 +277,12 @@ block content
 					- var ipAddr = item.addr.substring(0, item.addr.lastIndexOf(":"));
 					- ipAddr = ipAddr.replace(/,/g, '.');
 					if (peerIpSummary && peerIpSummary.detailsByIp && peerIpSummary.detailsByIp[ipAddr])
+						- var locInfo = Object.assign({}, peerIpSummary.detailsByIp[ipAddr]);
+						- delete locInfo.latitude;
+						- delete locInfo.longitude;
 						+contentSection("Location Info")
 							pre.mb-0
-								code.json #{JSON.stringify(peerIpSummary.detailsByIp[ipAddr], null, 4)}
+								code.json #{JSON.stringify(locInfo, null, 4)}
 
 
 block endOfBody
